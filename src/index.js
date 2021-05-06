@@ -1,3 +1,4 @@
+const MAX_FREE_TASKS = 10
 const express = require('express');
 const cors = require('cors');
 
@@ -9,20 +10,66 @@ app.use(cors());
 
 const users = [];
 
+function getUserByUsername(username) {
+  return users.find(user => user.username === username)
+}
+
+function getUserById(id) {
+  return users.find(user => user.id === id)
+}
+
+function checkUuid(id) {
+  return new RegExp('[0-9a-f]{8}-[0-9a-f]{4}-[0-5][0-9a-f]{3}-[089ab][0-9a-f]{3}-[0-9a-f]{12}').test(id)
+}
+
 function checksExistsUserAccount(request, response, next) {
-  // Complete aqui
+  const { username } = request.headers
+  const user = getUserByUsername(username)  
+  if (!user)
+    return response.status(404).json({ error: "User not found"})
+  
+  request.user = user;
+  next()
 }
 
 function checksCreateTodosUserAvailability(request, response, next) {
-  // Complete aqui
+  const user = request.user
+  if (!user.pro && user.todos.length >= MAX_FREE_TASKS)
+    return response.status(403).json({ error: "Only 10 tasks allowed on free plan"})
+
+  next()
 }
 
 function checksTodoExists(request, response, next) {
-  // Complete aqui
+  const { username } = request.headers
+  const user = getUserByUsername(username)
+  if (!user)
+    return response.status(404).json({ error: "User not found"})
+
+  const { id } = request.params
+  if (!checkUuid(id))
+    return response.status(400).json({ error: "Invalid Task Id"})
+
+  const task = user.todos.find(task => task.id === id)
+  if (!task)
+    return response.status(404).json({error: "Task not found"})
+
+  request.user = user
+  request.todo = task
+  next()
 }
 
 function findUserById(request, response, next) {
-  // Complete aqui
+  const { id } = request.params
+  if (!checkUuid(id))
+    return response.status(400).json({ error: "Invalid User Id"})
+
+  const user = getUserById(id)
+  if (!user)
+    return response.status(404).json({ error: "User not found"})
+
+  request.user = user;
+  next()
 }
 
 app.post('/users', (request, response) => {
